@@ -11,6 +11,8 @@ Original file is located at
 This implementation is inspired from the book: Robotics, Vision and Control of Peter Corke
 
 I implement the bicycle model to drive the robot to an arbitrary configuration (x, y, theta)
+
+Attention: If the goal is behind the robot i.e. alpha not $\in [-\pi/2, \pi/2]$, you may multiply $v$ ang gamma by (-1),
 """
 
 import numpy as np
@@ -167,7 +169,7 @@ class Simulation:
     self.robot.delta_t = step_dt
     self.step_dt = step_dt
     self.pos_traj = []
-    self.orientation_traj = []
+    self.orientation_traj = [init_config[2]]
 
 
   def run(self, max_run_time=1.):
@@ -188,12 +190,26 @@ class Simulation:
         break
 
   def plot_traj(self):
+
+
     plt.figure()
     x, y = zip(*self.pos_traj)
     plt.plot(x, y, label="pos")
     plt.scatter(self.robot.target_config[0], self.robot.target_config[1], c="r", label="goal")
     plt.scatter(self.robot.start_config[0], self.robot.start_config[1], c="g", label="start")
+
+    dx_target, dy_target = np.cos(self.robot.target_config[2]), np.sin(self.robot.target_config[2])
+    dx_start, dy_start = np.cos(self.robot.start_config[2]), np.sin(self.robot.start_config[2])
+    length = 1.5
+    width = 0.3
+
+    plt.arrow(x=self.robot.target_config[0], y=self.robot.target_config[1],
+              dx=length*dx_target, dy=length*dy_target, color="r", head_width=0.3)
+    plt.arrow(x=self.robot.start_config[0], y=self.robot.start_config[1],
+              dx=length*dx_start, dy=length*dy_start, color="g", head_width=0.3)
+
     plt.legend()
+    plt.axis("equal")
 
     plt.figure()
     plt.plot(self.orientation_traj, label="head")
@@ -220,8 +236,8 @@ def test():
 
 test()
 
-init_config = np.array([0, 0, np.pi/2])
-target_config = np.array([4, -6, np.pi/7])
+init_config = np.array([0, 0, 0*np.pi/2])
+target_config = np.array([4, -6, np.pi/2])
 controller = Controller(k_rho=1, k_alpha=3, k_beta=-1.5)
 robot = Robot(controller=controller)
 sim = Simulation(init_config, target_config, robot, step_dt=0.02)
