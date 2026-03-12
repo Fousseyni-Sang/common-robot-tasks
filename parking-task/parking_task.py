@@ -48,14 +48,19 @@ class Controller:
       return v, omega
 
 class Robot:
-  def __init__(self, L=1, controller: Controller=Controller()) -> None:
+  def __init__(self, L=1, controller: Controller=Controller(), max_speed=(1.0, 1.0)) -> None:
 
     self.config = np.array([0, 0, 0])
     self.start_config = self.config.copy()
     self.target_config = np.array([5, 5, np.pi/2])
+    self.speed = np.array([0.0, 0.0, 0.0])
     self.L = L # length of the robot car
     self.delta_t = 0.02 # second
     self.controller = controller
+    self.distance_to_target = 0
+    self.bearing = 0
+    self.max_speed = max_speed
+
 
   def update_bicycle(self, v, gamma):
     """
@@ -77,9 +82,11 @@ class Robot:
     """
     x_dot = v*np.cos(self.config[2]) # v*cos(theta)
     y_dot = v*np.sin(self.config[2]) # v*sin(theta)
-    theta_dot = (v/self.L)*np.tan(gamma) # v*tan(gamma)/L
+    theta_dot = (v/self.L)*np.tan(gamma) # v*tan(gamma)/
 
-
+    self.speed[0] = x_dot.copy()
+    self.speed[1] = y_dot.copy()
+    self.speed[2] = theta_dot.copy()
 
     self.config[0] = self.config[0] + x_dot*self.delta_t
     self.config[1] = self.config[1] + y_dot*self.delta_t
@@ -87,6 +94,7 @@ class Robot:
 
 
     return
+
 
   def uni2bicycle(self, v, omega):
     """
@@ -123,6 +131,10 @@ class Robot:
     """
     rho = np.linalg.norm(np.array([delta_x, delta_y]))
     alpha = np.atan2(delta_y, delta_x) - self.config[2]
+
+    self.bearing = alpha
+    self.distance_to_target = rho
+
     beta = -(alpha + self.config[2])
 
     #print(f"alpha_deg: {np.rad2deg(alpha)} beta_deg: {np.rad2deg(beta)}")
@@ -149,6 +161,8 @@ class Robot:
 
     # 4. get the unicycle model commands linear and angular speed
     v, omega = self.controller.get_cmds(rho, alpha, beta)
+    v = np.clip(v, -self.max_speed[0], self.max_speed[0])
+    omega = np.clip(omega, -self.max_speed[1], self.max_speed[1])
 
     #print(f"config: {v, omega}")
     # 5. transform to bicycle model commands v and gamma
@@ -197,9 +211,12 @@ class Simulation:
     plt.plot(x, y, label="pos")
     plt.scatter(self.robot.target_config[0], self.robot.target_config[1], c="r", label="goal")
     plt.scatter(self.robot.start_config[0], self.robot.start_config[1], c="g", label="start")
+    plt.scatter(self.robot.config[0], self.robot.config[1], c="b", label="final")
 
     dx_target, dy_target = np.cos(self.robot.target_config[2]), np.sin(self.robot.target_config[2])
     dx_start, dy_start = np.cos(self.robot.start_config[2]), np.sin(self.robot.start_config[2])
+    dx_final, dy_final = np.cos(self.robot.config[2]), np.sin(self.robot.config[2])
+
     length = 1.5
     width = 0.3
 
@@ -207,6 +224,8 @@ class Simulation:
               dx=length*dx_target, dy=length*dy_target, color="r", head_width=0.3)
     plt.arrow(x=self.robot.start_config[0], y=self.robot.start_config[1],
               dx=length*dx_start, dy=length*dy_start, color="g", head_width=0.3)
+    plt.arrow(x=self.robot.config[0], y=self.robot.config[1],
+              dx=0.6*length*dx_final, dy=0.6*length*dy_final, color="b", head_width=0.1)
 
     plt.legend()
     plt.axis("equal")
@@ -236,10 +255,10 @@ def test():
 
 test()
 
-init_config = np.array([0, 0, 0*np.pi/2])
-target_config = np.array([4, -6, np.pi/2])
+init_config = np.array([0, 0, 0.])
+target_config = np.array([4, -6, np.pi/7])
 controller = Controller(k_rho=1, k_alpha=3, k_beta=-1.5)
-robot = Robot(controller=controller)
+robot = Robot(controller=controller, max_speed=(1.0, 1.))
 sim = Simulation(init_config, target_config, robot, step_dt=0.02)
 sim.run(100)
 sim.plot_traj()
