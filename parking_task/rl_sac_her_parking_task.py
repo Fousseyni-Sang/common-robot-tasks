@@ -25,6 +25,7 @@ if __name__=="__main__":
 
   eval_env = gym.make("gymnasium_env/ParkingTaskHer-v0")
   steps_per_episode = int(vec_env.envs[0].unwrapped.max_time_step / vec_env.envs[0].unwrapped.step_dt)
+  
   model = SAC(
       "MultiInputPolicy", 
       vec_env, 
@@ -36,11 +37,12 @@ if __name__=="__main__":
       verbose=1,
       tensorboard_log="./sac_her_parkingtask_tensorboard/",
       n_steps=256,
-      ent_coef=0.001,
-      learning_starts=steps_per_episode * vec_env.num_envs + 100
+      learning_starts=steps_per_episode * vec_env.num_envs + 100,
+      gradient_steps=5,
+      buffer_size=5_000_000
   )
 
-
+  
   callback = CallbackList([
       CheckpointCallback(save_freq=30000, save_path="./sac_her_checkpoints/"),
       EvalCallback(eval_env, best_model_save_path="./sac_her_best_model/", eval_freq=30000),

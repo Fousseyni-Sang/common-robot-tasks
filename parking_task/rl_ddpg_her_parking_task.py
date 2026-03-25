@@ -37,7 +37,9 @@ if __name__=="__main__":
       verbose=1,
       tensorboard_log="./ddpg_her_parkingtask_tensorboard/",
       n_steps=256,
-      learning_starts=steps_per_episode * vec_env.num_envs + 100
+      gradient_steps=1,
+      learning_starts=steps_per_episode * vec_env.num_envs + 100,
+      buffer_size=5_000_000
   )
 
 

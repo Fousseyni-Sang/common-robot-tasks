@@ -7,6 +7,7 @@ from stable_baselines3 import PPO, SAC, DDPG
 import os
 from parking_envs import ParkingTaskHer # this calls the gym register in parking_task/__init__.py
 import argparse
+import random
 
 parser = argparse.ArgumentParser()
 
@@ -84,7 +85,7 @@ if __name__=="__main__":
     rewards_goal.append(envs.unwrapped.reward_goal)
 
     obs = next_obs.copy()
-
+    #break
   print(f"truncate: {truncated} terminate: {terminated} outbound: {envs.unwrapped.timeout}")
   print(f"final_config: {envs.unwrapped.robot.config} target_config: {envs.unwrapped.target_config}")
   print(f"distance to target: {envs.unwrapped.distance_to_target}")
@@ -169,6 +170,8 @@ if __name__=="__main__":
   def evaluate():
 
     from tqdm import tqdm 
+
+    np.random.seed(random.randint(0, 100))
 
     envs = gym.make("gymnasium_env/ParkingTaskHer-v0")
 

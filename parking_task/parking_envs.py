@@ -101,8 +101,6 @@ class Robot:
       This function implements one step update of the kinematic model
     """
 
-
-    #print(f"config: {v, omega}")
     # 5. transform to bicycle model commands v and gamma
     v, gamma = self.uni2bicycle(v, omega)
 
@@ -113,11 +111,12 @@ class Robot:
 class ParkingTaskHer(gym.Env):
   def __init__(self, config=None) -> None:
 
+    self.grid_size = (-20, 20)
     self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2, ))
-    self.observation_space = self.observation_space = gym.spaces.Dict({
+    self.observation_space = gym.spaces.Dict({
                         "observation": gym.spaces.Box(low=-1, high=1, shape=(8, ), dtype=np.float32),
-                        "achieved_goal": gym.spaces.Box(low=np.array([-20, -20, -np.pi]), high=np.array([20, 20, np.pi]), shape=(3, ), dtype=np.float32), # [x, y, theta]
-                        "desired_goal": gym.spaces.Box(low=np.array([-20, -20, -np.pi]), high=np.array([20, 20, np.pi]), shape=(3, ), dtype=np.float32),  # [x, y, theta]
+                        "achieved_goal": gym.spaces.Box(low=np.array([self.grid_size[0], self.grid_size[0], -np.pi]), high=np.array([self.grid_size[1], self.grid_size[1], np.pi]), shape=(3, ), dtype=np.float32), # [x, y, theta]
+                        "desired_goal": gym.spaces.Box(low=np.array([self.grid_size[0], self.grid_size[0], -np.pi]), high=np.array([self.grid_size[1], self.grid_size[1], np.pi]), shape=(3, ), dtype=np.float32),  # [x, y, theta]
                     })
     self.robot = Robot()
 
@@ -132,13 +131,11 @@ class ParkingTaskHer(gym.Env):
 
     self.bearing_threshold = 0.05
     self.distance_threshold = 0.05
-
-
-    self.grid_size = (5, 5)
+    
     self.weights = {"dist": 20., "bearing": -4., "orient":1.5}
 
     self.time = 0
-    self.max_time_step = 20
+    self.max_time_step = 40 # second
     self.step_dt = 0.02
     self.robot.delta_t = self.step_dt
 
@@ -170,7 +167,7 @@ class ParkingTaskHer(gym.Env):
 
     normalized_lin_speed = self.robot.speed[:2]/self.robot.max_speed[0]
     normalized_ang_speed = self.robot.speed[2]/self.robot.max_speed[1]
-    normalized_distance = np.clip(self.distance_to_target/self.initial_distance_to_target, -1, 1)
+    normalized_distance = np.clip((self.distance_to_target-self.grid_size[0])/(self.grid_size[1]-self.grid_size[0]), -1, 1)
 
     obs = np.array([
         np.sin(self.target_bearing).item(), # 1
@@ -216,7 +213,7 @@ class ParkingTaskHer(gym.Env):
     # IMPORTANT: Must call this first to seed the random number generator
     super().reset(seed=seed)
 
-    low, high = -self.grid_size[0], self.grid_size[0]
+    low, high = self.grid_size[0], self.grid_size[1]
     self.target_config[:2] = np.random.uniform(low=low, high=high, size=(2, ))
     self.start_config[:2] = np.random.uniform(low=low, high=high, size=(2, ))
 
@@ -251,7 +248,7 @@ class ParkingTaskHer(gym.Env):
 
     self.time += self.step_dt
 
-    outbound = abs(self.robot.config[0]) > self.grid_size[0] or abs(self.robot.config[1]) > self.grid_size[1]
+    outbound = abs(self.robot.config[0]) > self.grid_size[1] or abs(self.robot.config[1]) > self.grid_size[1]
     timeout = self.time > self.max_time_step
 
     d_theta = np.abs(self.robot.config[..., 2] - self.target_config[..., 2])
